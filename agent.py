@@ -3,13 +3,13 @@
 import json
 import yfinance as yf
 from newsapi import NewsApiClient
-from langchain.tools import tool
+from langchain.tools import tool, Tool  # <-- CHANGE 1: Import 'Tool'
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-# --- Tool 1: Stock Info ---
+# --- Tool 1: Stock Info (This one is simple, so @tool is fine) ---
 @tool
 def get_stock_info(ticker: str):
     """
@@ -36,8 +36,8 @@ def get_stock_info(ticker: str):
     except Exception as e:
         return f"Error fetching stock data for {ticker}: {e}"
 
-# --- Tool 2: Financial News ---
-@tool
+# --- Tool 2: Financial News (Needs key, so we remove @tool) ---
+# <-- CHANGE 2: Removed @tool decorator
 def get_financial_news(query: str, news_api_key: str):
     """
     Fetches the top 5 recent financial news headlines for a given company or query.
@@ -61,8 +61,8 @@ def get_financial_news(query: str, news_api_key: str):
     except Exception as e:
         return f"Error fetching news for {query}: {e}"
 
-# --- Tool 3: Sentiment Analysis ---
-@tool
+# --- Tool 3: Sentiment Analysis (Needs key, so we remove @tool) ---
+# <-- CHANGE 2: Removed @tool decorator
 def analyze_sentiment(headlines: str, google_api_key: str):
     """
     Analyzes the sentiment of a list of news headlines (provided as a single string)
@@ -70,7 +70,6 @@ def analyze_sentiment(headlines: str, google_api_key: str):
     with a justification. Requires a Google API key for the LLM.
     """
     try:
-        # We initialize the LLM *inside* the tool to pass the key
         sentiment_llm = ChatGoogleGenerativeAI(
             model="gemini-flash-latest", 
             google_api_key=google_api_key,
@@ -101,23 +100,30 @@ def create_financial_agent(google_api_key: str, news_api_key: str):
     Creates and returns the financial analyst agent executor.
     """
     
-    # 1. Initialize the main LLM for the agent (the "brain")
-    # *** THIS IS THE CORRECTED MODEL per your request ***
     llm = ChatGoogleGenerativeAI(
         model="gemini-flash-latest", 
         google_api_key=google_api_key,
         temperature=0.2
     )
 
-    # 2. Modify tools to pass API keys
-    # We use lambda functions to "bake in" the API keys when the agent calls the tool
+    # <-- CHANGE 3: Manually wrap lambda functions in Tool() objects -->
     tools = [
-        get_stock_info,
-        lambda query: get_financial_news(query, news_api_key=news_api_key),
-        lambda headlines: analyze_sentiment(headlines, google_api_key=google_api_key),
+        get_stock_info, # This one is already a tool from the @tool decorator
+        
+        Tool(
+            name="get_financial_news",
+            func=lambda query: get_financial_news(query, news_api_key=news_api_key),
+            description="Fetches the top 5 recent financial news headlines for a given company or query. Requires a NewsAPI key."
+        ),
+        
+        Tool(
+            name="analyze_sentiment",
+            func=lambda headlines: analyze_sentiment(headlines, google_api_key=google_api_key),
+            description="Analyzes the sentiment of a list of news headlines (provided as a single string) and returns a sentiment classification (Positive, Negative, or Neutral) with a justification. Requires a Google API key for the LLM."
+        )
     ]
 
-    # 3. Create the Agent Prompt
+    # The rest of the function is the same
     agent_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", """You are a helpful and cautious junior financial analyst.
@@ -141,10 +147,8 @@ def create_financial_agent(google_api_key: str, news_api_key: str):
         ]
     )
     
-    # 4. Create the Agent
     agent = create_tool_calling_agent(llm, tools, agent_prompt)
 
-    # 5. Create the Agent Executor
     agent_executor = AgentExecutor(
         agent=agent, 
         tools=tools, 
