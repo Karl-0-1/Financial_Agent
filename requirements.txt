@@ -1,6 +1,6 @@
-langchain
-langchain-google-genai
+streamlit
+langchain>=0.2.0
+langchain-google-genai>=1.0.0
 google-generativeai
 yfinance
 newsapi-python
-streamlit
