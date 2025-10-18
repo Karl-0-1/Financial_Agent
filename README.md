@@ -11,7 +11,7 @@ This project is built with Streamlit for an interactive web interface.
 
 ## 🤖 Demo Screenshot
 
-`![App Screenshot](demo.png)`
+![App Screenshot](demo.png)
 
 ## ✨ Features
 
