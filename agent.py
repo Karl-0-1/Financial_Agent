@@ -3,13 +3,13 @@
 import json
 import yfinance as yf
 from newsapi import NewsApiClient
-from langchain.tools import tool, Tool  # <-- CHANGE 1: Import 'Tool'
+from langchain.tools import tool, Tool  
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-# --- Tool 1: Stock Info (This one is simple, so @tool is fine) ---
+# --- Tool 1: Stock Info ---
 @tool
 def get_stock_info(ticker: str):
     """
@@ -37,7 +37,6 @@ def get_stock_info(ticker: str):
         return f"Error fetching stock data for {ticker}: {e}"
 
 # --- Tool 2: Financial News (Needs key, so we remove @tool) ---
-# <-- CHANGE 2: Removed @tool decorator
 def get_financial_news(query: str, news_api_key: str):
     """
     Fetches the top 5 recent financial news headlines for a given company or query.
@@ -62,7 +61,6 @@ def get_financial_news(query: str, news_api_key: str):
         return f"Error fetching news for {query}: {e}"
 
 # --- Tool 3: Sentiment Analysis (Needs key, so we remove @tool) ---
-# <-- CHANGE 2: Removed @tool decorator
 def analyze_sentiment(headlines: str, google_api_key: str):
     """
     Analyzes the sentiment of a list of news headlines (provided as a single string)
@@ -106,7 +104,7 @@ def create_financial_agent(google_api_key: str, news_api_key: str):
         temperature=0.2
     )
 
-    # <-- CHANGE 3: Manually wrap lambda functions in Tool() objects -->
+    # <-- Manually wrap lambda functions in Tool() objects -->
     tools = [
         get_stock_info, # This one is already a tool from the @tool decorator
         
@@ -123,7 +121,6 @@ def create_financial_agent(google_api_key: str, news_api_key: str):
         )
     ]
 
-    # The rest of the function is the same
     agent_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", """You are a helpful and cautious junior financial analyst.
